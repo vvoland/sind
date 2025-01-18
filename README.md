@@ -21,7 +21,7 @@ git clone https://github.com/vvoland/sind && \
 ```
 
 ### Manual
-1. Build the `vlnd/steam` docker image (optional)
+1. Build the `vlnd/steam` docker image with `docker buildx bake` (optional)
 2. Copy the `sind` script to your preferred `PATH` location
 
 
