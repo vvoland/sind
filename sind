@@ -1,0 +1,103 @@
+#!/bin/sh
+DISK="$HOME/.cache/steam/data.ext4"
+DISK_SIZE="100G"
+GAMESAVES="$HOME/samba/Sync"
+
+if docker container inspect steam &>/dev/null; then
+    printf "\x1b[1;31m"
+    echo "# Steam is already running!"
+    printf "\x1b[0;m"
+    exit 1
+fi
+
+function explain() {
+    printf "\x1b[1;34m"
+    echo "# $@"
+    printf "\x1b[0;m"
+}
+
+function preview() {
+    printf "\x1b[2;37m"
+    echo "$@"
+    printf "\x1b[0;m"
+}
+
+function perform() {
+    printf "\x1b[2;37m"
+    (
+        set -x
+        "$@"
+    )
+    printf "\x1b[0;m"
+}
+
+if [ ! -f "$DISK" ]; then
+    dir=$(dirname "$DISK")
+    mkdir -p "$dir"
+
+    fs=$(stat -f -c %T "$dir")
+    # Disable CoW
+    if [ "$fs" == "btrfs" ]; then
+        explain "Disabling CoW on $dir"
+        chattr +C "$dir"
+    fi
+
+    explain "Creating $DISK with $DISK_SIZE"
+    perform fallocate -l "$DISK_SIZE" "$DISK"
+
+    explain "Formatting $DISK as ext4"
+    printf "\x1b[2;37m"
+    perform mkfs.ext4 "$DISK"
+    printf "\x1b[0;m"
+
+    explain "Disabling case sensitivity for $DISK"
+    printf "\x1b[2;37m"
+    perform tune2fs -O casefold "$DISK"
+    printf "\x1b[0;m"
+fi
+
+explain "Mounting $DISK as loopdev (needs sudo)"
+preview sudo losetup --nooverlap --direct-io --show -f "$DISK"
+loopdev=$(sudo losetup --nooverlap --direct-io --show -f "$DISK")
+
+appid=""
+if [ "$1" == "civ6" ]; then
+    appid=289070
+fi
+
+cmd=""
+if [ -n "$appid" ]; then
+    cmd="steam -applaunch $appid -silent"
+fi
+
+explain "Allow X11 connection from local host"
+perform xhost +local:host
+
+explain "Running Steam!"
+
+saves=()
+ctrShare="/home/ubuntu/.local/share"
+if [ -d "$GAMESAVES" ]; then
+    saves+=( "-v" "$GAMESAVES/Civ6:$ctrShare/Steam/steamapps/compatdata/289070/pfx/drive_c/users/steamuser/Documents/My Games/Sid Meier's Civilization VI/Saves" )
+    saves+=( "-v" "$GAMESAVES/Civ6:$ctrShare/aspyr-media/Sid Meier's Civilization VI/Saves" )
+fi
+
+perform docker run -d --rm -u 1000:1000 \
+    --name steam \
+    --device /dev/dri \
+    --mount type=bind,src=$XDG_RUNTIME_DIR/pulse,dst=/pulse,ro \
+    --env PULSE_SERVER=unix:/pulse/native \
+    --mount type=bind,src=$XDG_RUNTIME_DIR/bus,dst=/dbus,ro \
+    --env DBUS_SESSION_BUS_ADDRESS=unix:path=/dbus \
+    --security-opt no-new-privileges \
+    --cap-drop ALL \
+    --tmpfs /tmp \
+    --ulimit nofile=1024:524288 \
+    -e DISPLAY=$DISPLAY \
+    --mount type=bind,src=/tmp/.X11-unix/X${DISPLAY#:},dst=/tmp/.X11-unix/X${DISPLAY#:},readonly \
+    "--mount=type=volume,dst=/home/ubuntu,volume-driver=local,volume-opt=device=$loopdev,volume-opt=type=ext4" \
+    "${saves[@]}" \
+    --security-opt seccomp=unconfined --security-opt apparmor=unconfined \
+    --ipc host \
+    vlnd/steam \
+    $cmd
