@@ -42,7 +42,20 @@ sind [game]
 ### Supported games
 - Civilization VI (`civ6`)
 
-## Configurations
+## Configuration
 
-- Modify `DISK` and `GAMESAVES` variables to change storage locations.
-- Adjust `DISK_SIZE` (`100G` by default) to allocate more or less space for Steam data (only affects the initial disk creation).
+You can override the default configuration in a config file `$HOME/.config/sind.conf`.
+
+### Example `sind.conf`
+
+```bash
+# Size that will be allocated for the disk (only affects the initial disk creation)
+DISK_SIZE=500G
+
+# Location of the ext4 file where Steam data will be stored
+DISK_PATH=$HOME/steam.ext4
+
+# Location that will be used to store game saves
+# Personally, I use a path under a samba mount so my saves are synced between multiple devices
+SAVES_PATH=/samba-share/Saves
+```
