@@ -65,6 +65,15 @@ if [ ! -f "$DISK_PATH" ]; then
     printf "\x1b[2;37m"
     perform tune2fs -O casefold "$DISK_PATH"
     printf "\x1b[0;m"
+else
+    desired_size=$(echo "$DISK_SIZE" | numfmt --from=iec --to=none)
+    actual_size=$(stat "$DISK_PATH" -c %s)
+    if [ "$desired_size" != "$actual_size" ]; then
+        actual_human=$(echo "$actual_size" | numfmt --from=none --to=iec)
+        error "Resizing disk after the initial creation is not supported!"
+        preview "Current size: $actual_human, configured: $DISK_SIZE"
+        exit 1
+    fi
 fi
 
 explain "Mounting $DISK_PATH as loopdev (needs sudo)"
