@@ -1,5 +1,5 @@
 #!/bin/sh
-DISK="$HOME/.cache/steam/data.ext4"
+DISK_PATH="$HOME/.cache/steam/data.ext4"
 DISK_SIZE="100G"
 GAMESAVES="$HOME/samba/Sync"
 
@@ -31,8 +31,8 @@ function perform() {
     printf "\x1b[0;m"
 }
 
-if [ ! -f "$DISK" ]; then
-    dir=$(dirname "$DISK")
+if [ ! -f "$DISK_PATH" ]; then
+    dir=$(dirname "$DISK_PATH")
     mkdir -p "$dir"
 
     fs=$(stat -f -c %T "$dir")
@@ -42,23 +42,23 @@ if [ ! -f "$DISK" ]; then
         chattr +C "$dir"
     fi
 
-    explain "Creating $DISK with $DISK_SIZE"
-    perform fallocate -l "$DISK_SIZE" "$DISK"
+    explain "Creating $DISK_PATH with $DISK_SIZE"
+    perform fallocate -l "$DISK_SIZE" "$DISK_PATH"
 
-    explain "Formatting $DISK as ext4"
+    explain "Formatting $DISK_PATH as ext4"
     printf "\x1b[2;37m"
-    perform mkfs.ext4 "$DISK"
+    perform mkfs.ext4 "$DISK_PATH"
     printf "\x1b[0;m"
 
-    explain "Disabling case sensitivity for $DISK"
+    explain "Disabling case sensitivity for $DISK_PATH"
     printf "\x1b[2;37m"
-    perform tune2fs -O casefold "$DISK"
+    perform tune2fs -O casefold "$DISK_PATH"
     printf "\x1b[0;m"
 fi
 
-explain "Mounting $DISK as loopdev (needs sudo)"
-preview sudo losetup --nooverlap --direct-io --show -f "$DISK"
-loopdev=$(sudo losetup --nooverlap --direct-io --show -f "$DISK")
+explain "Mounting $DISK_PATH as loopdev (needs sudo)"
+preview sudo losetup --nooverlap --direct-io --show -f "$DISK_PATH"
+loopdev=$(sudo losetup --nooverlap --direct-io --show -f "$DISK_PATH")
 
 appid=""
 if [ "$1" == "civ6" ]; then
