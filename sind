@@ -1,12 +1,23 @@
 #!/bin/sh
-DISK_PATH="$HOME/.cache/steam/data.ext4"
-DISK_SIZE="100G"
-SAVES_PATH="$HOME/samba/Sync"
+CONF_PATH=$HOME/.config/sind.conf
+[ -f "$CONF_PATH" ] && source "$CONF_PATH"
+
+DISK_PATH="${DISK_PATH:=$HOME/.cache/steam/data.ext4}"
+DISK_SIZE="${DISK_SIZE:=100G}"
+
+if [ -z "$SAVES_PATH" ]; then
+    SAVES_PATH="$HOME/.share/sind-saves"
+    mkdir -p $SAVES_PATH
+fi
+
+function error() {
+    printf "\x1b[1;31m"
+    echo "# $@" >&2
+    printf "\x1b[0;m"
+}
 
 if docker container inspect steam &>/dev/null; then
-    printf "\x1b[1;31m"
-    echo "# Steam is already running!"
-    printf "\x1b[0;m"
+    error "Steam is already running!"
     exit 1
 fi
 
