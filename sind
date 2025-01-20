@@ -1,7 +1,7 @@
 #!/bin/sh
 DISK_PATH="$HOME/.cache/steam/data.ext4"
 DISK_SIZE="100G"
-GAMESAVES="$HOME/samba/Sync"
+SAVES_PATH="$HOME/samba/Sync"
 
 if docker container inspect steam &>/dev/null; then
     printf "\x1b[1;31m"
@@ -77,9 +77,9 @@ explain "Running Steam!"
 
 saves=()
 ctrShare="/home/ubuntu/.local/share"
-if [ -d "$GAMESAVES" ]; then
-    saves+=( "-v" "$GAMESAVES/Civ6:$ctrShare/Steam/steamapps/compatdata/289070/pfx/drive_c/users/steamuser/Documents/My Games/Sid Meier's Civilization VI/Saves" )
-    saves+=( "-v" "$GAMESAVES/Civ6:$ctrShare/aspyr-media/Sid Meier's Civilization VI/Saves" )
+if [ -d "$SAVES_PATH" ]; then
+    saves+=( "-v" "$SAVES_PATH/Civ6:$ctrShare/Steam/steamapps/compatdata/289070/pfx/drive_c/users/steamuser/Documents/My Games/Sid Meier's Civilization VI/Saves" )
+    saves+=( "-v" "$SAVES_PATH/Civ6:$ctrShare/aspyr-media/Sid Meier's Civilization VI/Saves" )
 fi
 
 perform docker run -d --rm -u 1000:1000 \
