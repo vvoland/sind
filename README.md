@@ -1,5 +1,7 @@
 # sind
 
+![preview](https://github.com/user-attachments/assets/5361d92b-919c-47d3-8267-24191e4e3647)
+
 This script sets up and runs Steam within a Docker container on Linux. Steam data is persisted in an raw disk formatted as an ext4 with case sensitivity disabled (for better compatibility with some Windows games).
 
 The script also supports mounting saves location for persisting.
