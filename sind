@@ -103,19 +103,32 @@ fi
 explain "Allow X11 connection from local host"
 perform xhost +local:host
 
-explain "Running Steam!"
-
 saves=()
-ctrShare="/home/ubuntu/.local/share"
-if [ -d "$SAVES_PATH" ]; then
-    perform docker run --rm \
-        "--mount=type=volume,dst=/home/ubuntu,volume-driver=local,volume-opt=device=$loopdev,volume-opt=type=ext4" \
-        vlnd/steam /init.sh
+initScript="#!/bin/sh"
+function addSavePath() {
+    local game="$1"
+    local ctrSharePath="$2"
 
-    saves+=( "-v" "$SAVES_PATH/Civ6:$ctrShare/Steam/steamapps/compatdata/289070/pfx/drive_c/users/steamuser/Documents/My Games/Sid Meier's Civilization VI/Saves" )
-    saves+=( "-v" "$SAVES_PATH/Civ6:$ctrShare/aspyr-media/Sid Meier's Civilization VI/Saves" )
+    local hostPath="$SAVES_PATH/Civ6"
+    if [ -d "$hostPath" ]; then
+        local ctrPath="/home/ubuntu/.local/share/$ctrSharePath"
+        saves+=( "--mount" "type=bind,src=$hostPath,dst=$ctrPath" )
+        initScript+="
+mkdir -p \"$ctrPath\""
+    fi
+}
+
+if [ -d "$SAVES_PATH" ]; then
+    addSavePath "Civ6" "Steam/steamapps/compatdata/289070/pfx/drive_c/users/steamuser/Documents/My Games/Sid Meier's Civilization VI/Saves"
+    addSavePath "Civ6" "aspyr-media/Sid Meier's Civilization VI/Saves"
+
+    explain "Init non-root directories"
+    perform docker run --rm -u 1000:1000 \
+        "--mount=type=volume,dst=/home/ubuntu,volume-driver=local,volume-opt=device=$loopdev,volume-opt=type=ext4" \
+        alpine sh -c "$initScript"
 fi
 
+explain "Running Steam!"
 perform docker run -d --rm -u 1000:1000 \
     --name steam \
     --device /dev/dri \
