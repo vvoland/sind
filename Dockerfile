@@ -26,6 +26,8 @@ RUN --mount=type=bind,from=deb,src=/steam.deb,dst=/steam.deb \
 	apt-get update && apt-get install -y /steam.deb && \
 	rm -rf /var/lib/apt/lists/*
 
+COPY --link ./init.sh /init.sh
+
 RUN usermod ubuntu -a -G video
 USER ubuntu
 

@@ -42,6 +42,7 @@ function perform() {
     printf "\x1b[0;m"
 }
 
+FIRST_RUN=0
 if [ ! -f "$DISK_PATH" ]; then
     dir=$(dirname "$DISK_PATH")
     mkdir -p "$dir"
@@ -65,6 +66,8 @@ if [ ! -f "$DISK_PATH" ]; then
     printf "\x1b[2;37m"
     perform tune2fs -O casefold "$DISK_PATH"
     printf "\x1b[0;m"
+
+    FIRST_RUN=1
 else
     desired_size=$(echo "$DISK_SIZE" | numfmt --from=iec --to=none)
     actual_size=$(stat "$DISK_PATH" -c %s)
@@ -76,9 +79,16 @@ else
     fi
 fi
 
-explain "Mounting $DISK_PATH as loopdev (needs sudo)"
+explain "Creating a loopdev for $DISK_PATH (needs sudo)"
 preview sudo losetup --nooverlap --direct-io --show -f "$DISK_PATH"
 loopdev=$(sudo losetup --nooverlap --direct-io --show -f "$DISK_PATH")
+
+if [ "$FIRST_RUN" == "1" ]; then
+    explain "Initializing $DISK_PATH content"
+    perform docker run --rm \
+        "--mount=type=volume,dst=/home/ubuntu,volume-driver=local,volume-opt=device=$loopdev,volume-opt=type=ext4" \
+        alpine chown -R 1000:1000 /home/ubuntu
+fi
 
 appid=""
 if [ "$1" == "civ6" ]; then
@@ -98,6 +108,10 @@ explain "Running Steam!"
 saves=()
 ctrShare="/home/ubuntu/.local/share"
 if [ -d "$SAVES_PATH" ]; then
+    perform docker run --rm \
+        "--mount=type=volume,dst=/home/ubuntu,volume-driver=local,volume-opt=device=$loopdev,volume-opt=type=ext4" \
+        vlnd/steam /init.sh
+
     saves+=( "-v" "$SAVES_PATH/Civ6:$ctrShare/Steam/steamapps/compatdata/289070/pfx/drive_c/users/steamuser/Documents/My Games/Sid Meier's Civilization VI/Saves" )
     saves+=( "-v" "$SAVES_PATH/Civ6:$ctrShare/aspyr-media/Sid Meier's Civilization VI/Saves" )
 fi
