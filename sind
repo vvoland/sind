@@ -16,7 +16,7 @@ function error() {
     printf "\x1b[0;m"
 }
 
-if docker container inspect steam &>/dev/null; then
+if docker -c default container inspect steam &>/dev/null; then
     error "Steam is already running!"
     exit 1
 fi
@@ -85,9 +85,9 @@ loopdev=$(sudo losetup --nooverlap --direct-io --show -f "$DISK_PATH")
 
 if [ "$FIRST_RUN" == "1" ]; then
     explain "Initializing $DISK_PATH content"
-    perform docker run --rm \
-        "--mount=type=volume,dst=/home/ubuntu,volume-driver=local,volume-opt=device=$loopdev,volume-opt=type=ext4" \
-        alpine chown -R 1000:1000 /home/ubuntu
+    perform docker -c default run --rm \
+        "--mount=type=volume,dst=/home/steam,volume-driver=local,volume-opt=device=$loopdev,volume-opt=type=ext4" \
+        alpine chown -R 1000:1000 /home/steam
 fi
 
 appid=""
@@ -111,7 +111,7 @@ function addSavePath() {
 
     local hostPath="$SAVES_PATH/Civ6"
     if [ -d "$hostPath" ]; then
-        local ctrPath="/home/ubuntu/.local/share/$ctrSharePath"
+        local ctrPath="/home/steam/.local/share/$ctrSharePath"
         saves+=( "--mount" "type=bind,src=$hostPath,dst=$ctrPath" )
         initScript+="
 mkdir -p \"$ctrPath\""
@@ -123,26 +123,29 @@ if [ -d "$SAVES_PATH" ]; then
     addSavePath "Civ6" "aspyr-media/Sid Meier's Civilization VI/Saves"
 
     explain "Init non-root directories"
-    perform docker run --rm -u 1000:1000 \
-        "--mount=type=volume,dst=/home/ubuntu,volume-driver=local,volume-opt=device=$loopdev,volume-opt=type=ext4" \
+    perform docker -c default run --rm -u 1000:1000 \
+        "--mount=type=volume,dst=/home/steam,volume-driver=local,volume-opt=device=$loopdev,volume-opt=type=ext4" \
         alpine sh -c "$initScript"
 fi
 
 explain "Running Steam!"
-perform docker run -d --rm -u 1000:1000 \
+perform docker -c default run -d --rm -u 1000:1000 \
     --name steam \
     --device /dev/dri \
-    --mount type=bind,src=$XDG_RUNTIME_DIR/pulse,dst=/pulse,ro \
-    --env PULSE_SERVER=unix:/pulse/native \
-    --mount type=bind,src=$XDG_RUNTIME_DIR/bus,dst=/dbus,ro \
-    --env DBUS_SESSION_BUS_ADDRESS=unix:path=/dbus \
+    --mount type=bind,src=$XDG_RUNTIME_DIR/pulse,dst=/xdg/pulse,ro \
+    --env PULSE_SERVER=unix:/xdg/pulse/native \
+    --mount type=bind,src=$XDG_RUNTIME_DIR/bus,dst=/xdg/dbus,ro \
+    --env DBUS_SESSION_BUS_ADDRESS=unix:path=/xdg/dbus \
     --security-opt no-new-privileges \
+    --cap-add CAP_SYS_NICE \
     --cap-drop ALL \
     --tmpfs /tmp \
+    --tmpfs /tmp/.X11-unix \
     --ulimit nofile=1024:524288 \
     -e DISPLAY=$DISPLAY \
+    -e XDG_RUNTIME_DIR=/xdg \
     --mount type=bind,src=/tmp/.X11-unix/X${DISPLAY#:},dst=/tmp/.X11-unix/X${DISPLAY#:},readonly \
-    "--mount=type=volume,dst=/home/ubuntu,volume-driver=local,volume-opt=device=$loopdev,volume-opt=type=ext4" \
+    "--mount=type=volume,dst=/home/steam,volume-driver=local,volume-opt=device=$loopdev,volume-opt=type=ext4" \
     "${saves[@]}" \
     --security-opt seccomp=unconfined --security-opt apparmor=unconfined \
     --ipc host \
