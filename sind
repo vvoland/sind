@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 CONF_PATH=$HOME/.config/sind.conf
 [ -f "$CONF_PATH" ] && source "$CONF_PATH"
 
